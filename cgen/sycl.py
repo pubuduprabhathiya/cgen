@@ -196,20 +196,48 @@ class CLVectorPOD(Declarator):
     mapper_method = "map_cl_vector_pod"
 
 # }}}
+class Buffer(NestedDeclarator):
+    def __init__(self, subdecl,type):
+        self.type=type
+        NestedDeclarator.__init__(self, subdecl)
+    #sycl::buffer<float> a_buf,
+    def get_decl_pair(self):
+        sub_tp, sub_decl = self.subdecl.get_decl_pair()
+        return [f"sycl::buffer<{self.type}>"], f"{sub_decl}_buf"
 
+
+    mapper_method = "map_pointer"
+class SYCLGetAccessor(Generable):
+    def __init__(self, name,is_written):
+        self.name=name
+        if(is_written):
+            self.access_mode="sycl::access::mode::read_write"
+        else:
+            self.access_mode="sycl::access::mode::read"
+    def generate(self):
+        yield f"{self.name}_buf.get_access<{self.access_mode}>(h)"
+    mapper_method = "map_sycl_get_accessor"
 # vim: fdm=marker
-
-class SYCLBody(Generable):
+class SYCLparallel_for(Generable):
     def __init__(self, body,ndim):
-        """Initialize a function definition. *fdecl* is expected to be
-        a :class:`FunctionDeclaration` instance, while *body* is a
-        :class:`Block`.
-        """
 
         self.ndim=ndim
-        self.upper = "queue_.submit([&](sycl::handler &h) {"+"\n h.parallel_for(range_, [=](sycl::nd_item<{}>  item)".format(self.ndim)
+        self.upper = "h.parallel_for(range_, [=](sycl::nd_item<{}>  item)".format(self.ndim)
         self.body = body
-        self.lower=");\n }).wait();"
+        self.lower=");"
+
+    def generate(self):
+        yield self.upper
+        yield from self.body.generate()
+        yield self.lower
+
+    mapper_method = "map_function_body"
+class SYCLQueueSubmit(Generable):
+    def __init__(self, body):
+
+        self.upper = "queue_.submit([&](sycl::handler &h)"
+        self.body = body
+        self.lower=").wait();"
 
     def generate(self):
         yield self.upper
