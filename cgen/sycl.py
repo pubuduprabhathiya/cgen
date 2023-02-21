@@ -20,15 +20,8 @@ THE SOFTWARE.
 
 import numpy as np
 
-from cgen import \
-        Declarator, \
-        DeclSpecifier, \
-        NestedDeclarator, \
-        Value,\
-        Pointer,\
-        Extern,\
-NamespaceQualifier,\
-    Generable
+from cgen import (Declarator, DeclSpecifier, Extern, Generable,
+                  NamespaceQualifier, NestedDeclarator, Pointer, Value)
 
 
 def dtype_to_cltype(dtype):
@@ -208,21 +201,22 @@ class Buffer(NestedDeclarator):
 
     mapper_method = "map_pointer"
 class SYCLGetAccessor(Generable):
-    def __init__(self, name,is_written):
+    def __init__(self, name,is_written,handler):
         self.name=name
+        self.handler=handler
         if(is_written):
             self.access_mode="sycl::access::mode::read_write"
         else:
             self.access_mode="sycl::access::mode::read"
     def generate(self):
-        yield f"{self.name}_buf.get_access<{self.access_mode}>(h)"
+        yield "{}_buf.get_access<{}>({})".format(self.name,self.access_mode,self.handler)
     mapper_method = "map_sycl_get_accessor"
 # vim: fdm=marker
 class SYCLparallel_for(Generable):
-    def __init__(self, body,ndim):
+    def __init__(self, body,ndim,handler,nd_item):
 
         self.ndim=ndim
-        self.upper = "h.parallel_for(range_, [=](sycl::nd_item<{}>  item)".format(self.ndim)
+        self.upper = "{}.parallel_for(range_, [=](sycl::nd_item<{}>  {})".format(handler,self.ndim,nd_item)
         self.body = body
         self.lower=");"
 
@@ -233,9 +227,8 @@ class SYCLparallel_for(Generable):
 
     mapper_method = "map_function_body"
 class SYCLQueueSubmit(Generable):
-    def __init__(self, body):
-
-        self.upper = "queue_.submit([&](sycl::handler &h)"
+    def __init__(self, body,handler):
+        self.upper = "queue_.submit([&](sycl::handler &{})".format(handler)
         self.body = body
         self.lower=").wait();"
 
