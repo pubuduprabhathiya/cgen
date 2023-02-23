@@ -20,8 +20,8 @@ THE SOFTWARE.
 
 import numpy as np
 
-from cgen import (Declarator, DeclSpecifier, Extern, Generable,
-                  NamespaceQualifier, NestedDeclarator, Pointer, Value)
+from cgen import (Declarator, DeclSpecifier, Generable,Lamda,FunctionBody,
+                  NestedDeclarator, Value)
 
 
 def dtype_to_cltype(dtype):
@@ -237,18 +237,13 @@ class SYCLGetAccessor(Generable):
 # vim: fdm=marker
 class SYCLparallel_for(Generable):
     def __init__(self, body,ndim,handler,nd_item):
-
-        self.ndim=ndim
-        self.upper = "{}.parallel_for(range_, [=](sycl::nd_item<{}>  {})".format(handler,self.ndim,nd_item)
-        self.body = body
-        self.lower=");"
+        self.handler=handler
+        self.args=["range_",FunctionBody(Lamda("=",[Value(f"sycl::nd_item<{ndim}>",nd_item)]),body)]
 
     def generate(self):
-        yield self.upper
-        yield from self.body.generate()
-        yield self.lower
+        yield "{}.parallel_for({});".format(self.handler,", ".join(str(ad) for ad in self.args))
 
-    mapper_method = "map_function_body"
+    mapper_method = "map_SYCL_parallel_for"
 class SYCLQueueSubmit(Generable):
     def __init__(self, body,handler):
         self.upper = "queue_.submit([&](sycl::handler &{})".format(handler)
