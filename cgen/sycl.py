@@ -215,7 +215,7 @@ class SYCLAccessor(NestedDeclarator):
 
     def get_decl_pair(self):
         if self.count is None:
-            return [f"sycl::accesso<{ self.type}>"], f"{self.sub_decl}({self.handler})"
+            return [f"sycl::accessor<{ self.type}>"], f"{self.sub_decl}({self.handler})"
         else:
             return [f"sycl::accessor<{ self.type}>"], f"{self.sub_decl}(sycl::range<1>({self.count}),{self.handler})"
 
@@ -246,13 +246,9 @@ class SYCLparallel_for(Generable):
     mapper_method = "map_SYCL_parallel_for"
 class SYCLQueueSubmit(Generable):
     def __init__(self, body,handler):
-        self.upper = "queue_.submit([&](sycl::handler &{})".format(handler)
-        self.body = body
-        self.lower=").wait();"
+        self.args=[FunctionBody(Lamda("&",[Value("sycl::handler", handler)]),body)]
 
     def generate(self):
-        yield self.upper
-        yield from self.body.generate()
-        yield self.lower
+        yield "queue_.submit({}).wait();".format(", ".join(str(ad) for ad in self.args))
 
-    mapper_method = "map_function_body"
+    mapper_method = "map_SYCL_queue_submit"
