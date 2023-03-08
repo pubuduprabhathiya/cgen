@@ -80,31 +80,37 @@ class SYCLKernel(DeclSpecifier):
 
 # {{{ kernel args
 
-class CLConstant(DeclSpecifier):
+class SYCLConstant(DeclSpecifier):
     def __init__(self, subdecl):
-        DeclSpecifier.__init__(self, subdecl, "__constant")
-
-    mapper_method = "map_cl_constant"
-
-
-class SYCLLocal(NestedDeclarator):
-    def __init__(self, subdecl):
-        print(subdecl)
-        self.type=subdecl.get_type()
         self.subdecl=subdecl
 
     def get_decl_pair(self):
         sub_tp,sub_decl=self.subdecl.get_decl_pair()
-        return [f"sycl::local_accessor<{self.type}>"],sub_decl
+        return [f"sycl::constant_ptr<{sub_tp[0]}>"],sub_decl
+    
+    mapper_method = "map_sycl_constant"
+
+
+class SYCLLocal(NestedDeclarator):
+    def __init__(self, subdecl):
+        self.subdecl=subdecl
+
+    def get_decl_pair(self):
+        sub_tp,sub_decl=self.subdecl.get_decl_pair()
+        return [f"sycl::local_ptr<{sub_tp[0]}>"],sub_decl
     
     mapper_method = "map_sycl_local"
 
 
-class CLGlobal(DeclSpecifier):
+class SYCLGlobal(DeclSpecifier):
     def __init__(self, subdecl):
-        DeclSpecifier.__init__(self, subdecl, "__global")
+        self.subdecl=subdecl
 
-    mapper_method = "map_cl_global"
+    def get_decl_pair(self):
+        sub_tp,sub_decl=self.subdecl.get_decl_pair()
+        return [f"sycl::global_ptr<{sub_tp[0]}>"],sub_decl
+    
+    mapper_method = "map_sycl_global"
 
 
 class CLImage(Value):
